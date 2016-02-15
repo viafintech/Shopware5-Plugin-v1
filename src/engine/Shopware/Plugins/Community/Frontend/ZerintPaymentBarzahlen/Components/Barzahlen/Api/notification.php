@@ -26,12 +26,10 @@ class Barzahlen_Notification extends Barzahlen_Base
      */
     public function __construct($shopId, $notificationKey, array $receivedData)
     {
-        /*
-        file_put_contents('/var/www/html/srahmel/shopware5.1/files/log/encurio.log', date("Y-m-d H:i:s") . " " . __METHOD__  . " - " . " - " . print_r($_GET['REQUEST'],true) . "\r\n", FILE_APPEND);
+        //file_put_contents('/var/www/html/srahmel/shopware5.1/files/log/encurio.log', date("Y-m-d H:i:s") . " " . __METHOD__  . " - " . " - " . print_r($_GET['REQUEST'],true) . "\r\n", FILE_APPEND);
         $this->_shopId = $shopId;
         $this->_notificationKey = $notificationKey;
         $this->_receivedData = $receivedData;
-        */
     }
 
     /**
