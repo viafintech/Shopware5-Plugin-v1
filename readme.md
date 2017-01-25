@@ -5,13 +5,15 @@ DE - https://integration.barzahlen.de/de/shopsysteme/shopware/nutzerhandbuch
 EN - https://integration.barzahlen.de/en/shopsystems/shopware/user-manual
 
 ## Current Version
-1.0.8
+1.1.0
 
 ## Changelog
 
+### 1.1.0 (25.01.2017)
+* updated to Shopware 5.2
+
 ### 1.0.8 (28.11.2016)
 * changed logo direction from vertical to horizontal
-
 
 ### 1.0.7 (04.12.2015)
 * updated to Shopware 5.1

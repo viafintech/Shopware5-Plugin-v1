@@ -33,7 +33,7 @@ class Shopware_Plugins_Frontend_ZerintPaymentBarzahlen_Bootstrap extends Shopwar
     public function install()
     {
         $this->createEvents();
-        $this->createPayment();
+        $this->createBarzahlenPayment();
         $this->createRules();
         $this->createForm();
         $this->createTranslations();
@@ -46,37 +46,47 @@ class Shopware_Plugins_Frontend_ZerintPaymentBarzahlen_Bootstrap extends Shopwar
      */
     protected function createEvents()
     {
-        $event = $this->subscribeEvent('Enlight_Controller_Dispatcher_ControllerPath_Frontend_PaymentBarzahlen', 'onGetControllerPathFrontend');
+        $this->subscribeEvent('Enlight_Controller_Dispatcher_ControllerPath_Frontend_PaymentBarzahlen', 'onGetControllerPathFrontend');
 
-        $event = $this->subscribeEvent('Enlight_Controller_Action_Frontend_PaymentBarzahlen_Notify', 'onNotification');
+        $this->subscribeEvent('Enlight_Controller_Action_Frontend_PaymentBarzahlen_Notify', 'onNotification');
 
-        $event = $this->subscribeEvent('Enlight_Controller_Action_Frontend_Checkout_Finish', 'onCheckoutSuccess');
+        $this->subscribeEvent('Enlight_Controller_Action_Frontend_Checkout_Finish', 'onCheckoutSuccess');
 
-        $event = $this->subscribeEvent('Enlight_Controller_Action_Frontend_Checkout_Confirm', 'onCheckoutConfirm');
+        $this->subscribeEvent('Enlight_Controller_Action_Frontend_Checkout_Confirm', 'onCheckoutConfirm');
 
-        $event = $this->subscribeEvent('Enlight_Controller_Action_PostDispatch_Backend_Order', 'onGetOrderControllerPostDispatch');
+        $this->subscribeEvent('Enlight_Controller_Action_PostDispatch_Backend_Order', 'onGetOrderControllerPostDispatch');
 
-        $event = $this->subscribeEvent('Enlight_Controller_Action_PreDispatch_Backend_Order', 'onGetOrderControllerPreDispatch');
+        $this->subscribeEvent('Enlight_Controller_Action_PreDispatch_Backend_Order', 'onGetOrderControllerPreDispatch');
 
-        $event = $this->subscribeEvent('Enlight_Controller_Action_PostDispatch_Backend_Index', 'onBackendIndexPostDispatch');
+        $this->subscribeEvent('Enlight_Controller_Action_PostDispatch_Backend_Index', 'onBackendIndexPostDispatch');
+        
     }
 
     /**
      * Creates a new or updates the old payment entry for the database.
      */
-    public function createPayment()
+    public function createBarzahlenPayment()
     {
         $getOldPayments = $this->Payment();
+        
+        //$result = \Doctrine\Common\Util\Debug::dump($getOldPayments->getId()) ;
+        //exit;
+     
+        
 
-        if (empty($getOldPayments['id'])) {
-            $settings = array('name' => 'barzahlen',
-                'description' => 'Barzahlen',
-                'action' => 'payment_barzahlen',
-                'active' => 1,
-                'position' => 1,
-                'pluginID' => $this->getId());
-
-            Shopware()->Payments()->createRow($settings)->save();
+        $sUpdate = is_object($getOldPayments);
+        if (!$sUpdate) {
+            $this->createPayment(
+                array(
+                    'name'          => 'barzahlen',
+                    'description'   => 'Barzahlen',
+                    'action'        => 'payment_barzahlen',
+                    'active'        => 1,
+                    'position'      => 1,
+                    'pluginID'      => $this->getId(),
+                    'additionaldescription' => 'Barzahlen'
+                )
+            );
         }
     }
 
@@ -88,13 +98,13 @@ class Shopware_Plugins_Frontend_ZerintPaymentBarzahlen_Bootstrap extends Shopwar
     public function createRules()
     {
         $payment = $this->Payment();
-
+       
         $rules = "INSERT INTO s_core_rulesets
               (paymentID, rule1, value1)
               VALUES
-              ('" . (int) $payment['id'] . "', 'ORDERVALUEMORE', '1000'),
-              ('" . (int) $payment['id'] . "', 'LANDISNOT', 'DE'),
-              ('" . (int) $payment['id'] . "', 'CURRENCIESISOISNOT', 'EUR')";
+              ('" . (int) $payment->getId() . "', 'ORDERVALUEMORE', '1000'),
+              ('" . (int) $payment->getId() . "', 'LANDISNOT', 'DE'),
+              ('" . (int) $payment->getId() . "', 'CURRENCIESISOISNOT', 'EUR')";
 
         Shopware()->Db()->query($rules);
     }
@@ -187,6 +197,20 @@ class Shopware_Plugins_Frontend_ZerintPaymentBarzahlen_Bootstrap extends Shopwar
     }
 
     /**
+     * secureUninstall capability
+     *
+     */
+    public function getCapabilities()
+    {
+        return array(
+            'install' => true,
+            'enable' => true,
+            'update' => true,
+            'secureUninstall' => true
+        );
+    }
+
+    /**
      * Performs the uninstallation of the payment plugin.
      *
      * @return boolean
@@ -194,8 +218,9 @@ class Shopware_Plugins_Frontend_ZerintPaymentBarzahlen_Bootstrap extends Shopwar
     public function uninstall()
     {
         $payment = $this->Payment();
-        Shopware()->Db()->query("DELETE FROM s_core_rulesets WHERE paymentID = '" . (int) $payment['id'] . "'");
         $this->disable();
+        Shopware()->Db()->query("DELETE FROM s_core_rulesets WHERE paymentID = '" . (int) $payment->getId() . "'");
+        $this->secureUninstall();
 
         return true;
     }
@@ -208,10 +233,15 @@ class Shopware_Plugins_Frontend_ZerintPaymentBarzahlen_Bootstrap extends Shopwar
     public function enable()
     {
         $payment = $this->Payment();
-        $payment->active = 1;
-        $payment->save();
+        if ($payment !== null) {
+            $payment->setActive(true);
+            $this->get('models')->flush($payment);
+        }
 
-        return parent::enable();
+        return array(
+            'success' => true,
+            'invalidateCache' => array('config', 'backend', 'proxy', 'frontend')
+        );
     }
 
     /**
@@ -222,10 +252,15 @@ class Shopware_Plugins_Frontend_ZerintPaymentBarzahlen_Bootstrap extends Shopwar
     public function disable()
     {
         $payment = $this->Payment();
-        $payment->active = 0;
-        $payment->save();
-
-        return parent::disable();
+        if ($payment !== null) {
+            $payment->setActive(false);
+            $this->get('models')->flush($payment);
+        }
+        
+        return array(
+            'success' => true,
+            'invalidateCache' => array('config', 'backend')
+        );
     }
 
     /**
@@ -256,17 +291,17 @@ class Shopware_Plugins_Frontend_ZerintPaymentBarzahlen_Bootstrap extends Shopwar
      */
     public function getVersion()
     {
-        return "1.0.8";
+        return "1.1.0";
     }
 
     /**
      * Selects all payment method information from the database.
      *
-     * @return payment method information
+     * @return object payment method information
      */
     public function Payment()
     {
-        return Shopware()->Payments()->fetchRow(array('name=?' => 'barzahlen'));
+        return $this->Payments()->findOneBy(array('name' => 'barzahlen'));
     }
 
     /**
@@ -347,13 +382,16 @@ class Shopware_Plugins_Frontend_ZerintPaymentBarzahlen_Bootstrap extends Shopwar
 
         for ($i = 1; $i <= 10; $i++) {
             $count = str_pad($i, 2, "0", STR_PAD_LEFT);
-            $description .= '<img src="https://cdn.barzahlen.de/images/barzahlen_partner_' . $count . '.png" alt="" style="display: inline; height: 1em; vertical-align: -0.1em;" />';
+            $description .= '<img src="https://cdn.barzahlen.de/images/barzahlen_partner_' . $count . '.png" alt="" style="height: 1em; vertical-align: -0.1em;" />';
         }
 
-        $newData = array('additionaldescription' => $description);
-        $where = array('id = ' . (int) $payment['id']);
-
-        Shopware()->Payments()->update($newData, $where);
+        $sql = '
+            UPDATE 
+                s_core_paymentmeans SET additionaldescription=?
+            WHERE 
+                id=?
+        ';
+        $this->get('db')->query($sql, array($description, (int) $payment->getId()));
 
         if (isset(Shopware()->Session()->BarzahlenPaymentError)) {
             $view = $args->getSubject()->View();
