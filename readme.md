@@ -1,5 +1,8 @@
 # Barzahlen Payment Module (Shopware 5)
 
+## Deprecation Notice
+This module is no longer maintained and should not be used for new projects. There may be a newer version with support for our [API v2](https://docs.barzahlen.de/api/v2/) in the future.
+
 ## User Manual
 DE - https://integration.barzahlen.de/de/shopsysteme/shopware/nutzerhandbuch  
 EN - https://integration.barzahlen.de/en/shopsystems/shopware/user-manual
